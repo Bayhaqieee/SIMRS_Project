@@ -1,16 +1,18 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import "./login.css";
 
 const Login = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const navigate = useNavigate(); // <--- untuk redirect
 
   const handleLogin = (e) => {
     e.preventDefault();
     if (username === "admin" && password === "123456") {
-      alert("Login berhasil!");
       setError("");
+      navigate("/dashboard"); // <--- redirect ke dashboard
     } else {
       setError("Username atau password salah!");
     }
