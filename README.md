@@ -1,70 +1,102 @@
-# Getting Started with Create React App
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+# Hospital Information System - IGD Module
 
-## Available Scripts
+Welcome to the **Hospital Information System** focused on the **Instalasi Gawat Darurat (IGD)** or Emergency Department. This web application is developed using modern front-end technologies to streamline emergency patient management in hospitals. The system is designed to be scalable and ready for integration with a MySQL database for full functionality.
 
-In the project directory, you can run:
+## Project Status
 
-### `npm start`
+🚧  **Status** : `Development in Progress - Frontend Ready, Backend Integration Pending`
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+## Features
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+* **Responsive Design** using Tailwind CSS
+* **Modular Component Structure** for better scalability and maintenance
+* **User Navigation** using `react-router-dom`
+* **Modern UI Elements** from `Ant Design`, `MUI`, and `Lucide React`
+* **Reusable Layouts and Dashboards**
+* **Axios Integration** for API communication
+* **Moment.js** for time and date manipulation (e.g., patient entry time, critical timing)
+* **Future Database Integration** with MySQL
 
-### `npm test`
+## Technologies Used
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+ **Frontend** :
 
-### `npm run build`
+* React
+* Vue *(for selective modules)*
+* Tailwind CSS
+* Ant Design (antd)
+* Material UI (MUI)
+* Lucide Icons
+* Axios
+* React Router DOM
+* Moment.js
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+ **Libraries/Packages Installed** :
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+```bash
+@mui/icons-material
+tailwindcss@3 postcss autoprefixer
+postcss postcss-cli
+react-router-dom
+antd @ant-design/icons
+axios moment
+@mui/material @mui/icons-material
+lucide-react
+```
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+## Setup Instructions
 
-### `npm run eject`
+1. Clone the repository:
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+```bash
+git clone https://github.com/YourUsername/Hospital_IGD_System.git
+```
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+2. Navigate to the project directory:
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+```bash
+cd Hospital_IGD_System
+```
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+3. Install the dependencies:
 
-## Learn More
+```bash
+npm install
+```
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+4. Run the application locally:
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+```bash
+npm start
+```
 
-### Code Splitting
+The application should now be running at `http://localhost:3000`.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+## Future Improvements
 
-### Analyzing the Bundle Size
+* Backend development using **Node.js** and database management with **MySQL**
+* Role-based access (Admin, Doctor, Nurse)
+* Notification system for incoming critical patients
+* Integration with patient medical records
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+## Team Members
 
-### Making a Progressive Web App
+| Name                   | Student ID     |
+| ---------------------- | -------------- |
+| Alya Mufidah           | 09021182227002 |
+| Bagas Ramandari        | 09021282227101 |
+| Chiello Fielaycia      | 09021182227008 |
+| M. Aditya Bayhaqie     | 09021282227122 |
+| Muhammad Afiif Nugraha | 09021282227075 |
+| Nabila Nurhusna Yap    | 09021182227032 |
+| Satria Dali Romadhon   | 09021182227001 |
+| Zidane Putra Fadilah   | 09021282227111 |
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+ **Dosen Pengampu** : Mukhlis Febriady, M.Kom.
 
-### Advanced Configuration
+ **Mata Kuliah** : Sistem Informasi Rumah Sakit
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+---
 
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+Feel free to contribute to the project or open issues if you find any bugs. This system aims to simplify the IGD workflow and support hospital staff with real-time patient data.
