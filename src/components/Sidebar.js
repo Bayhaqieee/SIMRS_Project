@@ -21,7 +21,7 @@ const Sidebar = ({ userRole, onLogout }) => {
   };
 
   return (
-    <div className="bg-blue-800 text-white h-screen w-64 fixed left-0 top-0 overflow-y-auto">
+    <div className="bg-blue-800 text-white h-screen w-64 fixed left-0 top-0 overflow-y-auto z-50">
       <div className="p-5 border-b border-blue-700">
         <h2 className="text-xl font-bold">Manajemen IGD</h2>
       </div>

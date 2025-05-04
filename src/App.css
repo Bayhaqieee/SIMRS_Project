@@ -1,5 +1,17 @@
 .App {
   text-align: center;
+  display: flex;
+}
+
+.content {
+  flex-grow: 1;
+  margin-left: 16rem; /* width of sidebar (w-64 = 16rem) */
+  display: flex;
+  flex-direction: column;
+}
+
+.main-content {
+  padding: 1rem;
 }
 
 .App-logo {
