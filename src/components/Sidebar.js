@@ -11,6 +11,7 @@ import {
   LockIcon,
   LogOutIcon,
   LayoutDashboardIcon,
+  Activity,
 } from "lucide-react";
 
 const Sidebar = ({ userRole, onLogout }) => {
@@ -21,15 +22,28 @@ const Sidebar = ({ userRole, onLogout }) => {
   };
 
   return (
-    <div className="bg-blue-800 text-white h-screen w-64 fixed left-0 top-0 overflow-y-auto z-50">
-      <div className="p-5 border-b border-blue-700">
-        <h2 className="text-xl font-bold">Manajemen IGD</h2>
+    <div className="bg-teal-700 text-white h-screen w-64 fixed left-0 top-0 overflow-y-auto z-50 shadow-lg">
+      <div className="p-5 border-b border-teal-600">
+        <div className="flex items-center gap-2">
+          <Activity className="h-6 w-6 text-white" />
+          <h2 className="text-xl font-semibold">RS Medika</h2>
+        </div>
+        <p className="text-teal-200 text-xs mt-1 ml-8">Sistem Manajemen IGD</p>
       </div>
-      <nav className="mt-5">
+      
+      <div className="mt-2 px-3">
+        <p className="text-xs font-medium text-teal-300 px-4 py-2 uppercase tracking-wider">
+          Menu Utama
+        </p>
+      </div>
+      
+      <nav className="mt-1">
         <Link
           to="/dashboard"
-          className={`flex items-center p-4 hover:bg-blue-700 ${
-            isActive("/dashboard") ? "bg-blue-700" : ""
+          className={`flex items-center px-4 py-3 mx-2 rounded-md hover:bg-teal-600 transition-colors ${
+            isActive("/dashboard") 
+              ? "bg-teal-800 text-white font-medium" 
+              : "text-teal-100"
           }`}
         >
           <LayoutDashboardIcon className="w-5 h-5 mr-3" />
@@ -38,55 +52,78 @@ const Sidebar = ({ userRole, onLogout }) => {
 
         {userRole === "petugas" && (
           <>
+            <div className="mt-4 mb-2 px-3">
+              <p className="text-xs font-medium text-teal-300 px-4 py-2 uppercase tracking-wider">
+                Administrasi
+              </p>
+            </div>
+            
             <Link
               to="/doctor-management"
-              className={`flex items-center p-4 hover:bg-blue-700 ${
-                isActive("/doctor-management") ? "bg-blue-700" : ""
+              className={`flex items-center px-4 py-3 mx-2 rounded-md hover:bg-teal-600 transition-colors ${
+                isActive("/doctor-management") 
+                  ? "bg-teal-800 text-white font-medium" 
+                  : "text-teal-100"
               }`}
             >
               <UserIcon className="w-5 h-5 mr-3" />
               <span>Manajemen Dokter</span>
             </Link>
+            
             <Link
               to="/tariff-management"
-              className={`flex items-center p-4 hover:bg-blue-700 ${
-                isActive("/tariff-management") ? "bg-blue-700" : ""
+              className={`flex items-center px-4 py-3 mx-2 rounded-md hover:bg-teal-600 transition-colors ${
+                isActive("/tariff-management") 
+                  ? "bg-teal-800 text-white font-medium" 
+                  : "text-teal-100"
               }`}
             >
               <DollarSignIcon className="w-5 h-5 mr-3" />
               <span>Manajemen Tarif</span>
             </Link>
+            
             <Link
               to="/registration-management"
-              className={`flex items-center p-4 hover:bg-blue-700 ${
-                isActive("/registration-management") ? "bg-blue-700" : ""
+              className={`flex items-center px-4 py-3 mx-2 rounded-md hover:bg-teal-600 transition-colors ${
+                isActive("/registration-management") 
+                  ? "bg-teal-800 text-white font-medium" 
+                  : "text-teal-100"
               }`}
             >
               <ClipboardIcon className="w-5 h-5 mr-3" />
               <span>Manajemen Pendaftaran</span>
             </Link>
+            
             <Link
               to="/visit-management"
-              className={`flex items-center p-4 hover:bg-blue-700 ${
-                isActive("/visit-management") ? "bg-blue-700" : ""
+              className={`flex items-center px-4 py-3 mx-2 rounded-md hover:bg-teal-600 transition-colors ${
+                isActive("/visit-management") 
+                  ? "bg-teal-800 text-white font-medium" 
+                  : "text-teal-100"
               }`}
             >
               <CalendarIcon className="w-5 h-5 mr-3" />
               <span>Manajemen Kunjungan</span>
             </Link>
+            
             <Link
               to="/staff-management"
-              className={`flex items-center p-4 hover:bg-blue-700 ${
-                isActive("/staff-management") ? "bg-blue-700" : ""
+              className={`flex items-center px-4 py-3 mx-2 rounded-md hover:bg-teal-600 transition-colors ${
+                isActive("/staff-management") 
+                  ? "bg-teal-800 text-white font-medium" 
+                  : "text-teal-100"
               }`}
             >
               <UsersIcon className="w-5 h-5 mr-3" />
               <span>Manajemen Petugas</span>
             </Link>
+            
             <Link
               to="/report-management"
-              className={`flex items-center p-4 hover:bg-blue-700 ${
-                isActive("/report-management") ? "bg-blue-700" : ""
+              className={`flex items-center px-4 py-3 mx-2 rounded-md hover:bg-teal-600 transition-colors ${
+                isActive("/report-management") 
+                  ? "bg-teal-800 text-white font-medium" 
+                  : "text-teal-100"
               }`}
             >
               <FileTextIcon className="w-5 h-5 mr-3" />
@@ -97,19 +134,30 @@ const Sidebar = ({ userRole, onLogout }) => {
 
         {userRole === "dokter" && (
           <>
+            <div className="mt-4 mb-2 px-3">
+              <p className="text-xs font-medium text-teal-300 px-4 py-2 uppercase tracking-wider">
+                Akses Dokter
+              </p>
+            </div>
+            
             <Link
               to="/medical-record-management"
-              className={`flex items-center p-4 hover:bg-blue-700 ${
-                isActive("/medical-record-management") ? "bg-blue-700" : ""
+              className={`flex items-center px-4 py-3 mx-2 rounded-md hover:bg-teal-600 transition-colors ${
+                isActive("/medical-record-management") 
+                  ? "bg-teal-800 text-white font-medium" 
+                  : "text-teal-100"
               }`}
             >
               <FileIcon className="w-5 h-5 mr-3" />
               <span>Manajemen Rekam Medis</span>
             </Link>
+            
             <Link
               to="/doctor-password-edit"
-              className={`flex items-center p-4 hover:bg-blue-700 ${
-                isActive("/doctor-password-edit") ? "bg-blue-700" : ""
+              className={`flex items-center px-4 py-3 mx-2 rounded-md hover:bg-teal-600 transition-colors ${
+                isActive("/doctor-password-edit") 
+                  ? "bg-teal-800 text-white font-medium" 
+                  : "text-teal-100"
               }`}
             >
               <LockIcon className="w-5 h-5 mr-3" />
@@ -118,9 +166,15 @@ const Sidebar = ({ userRole, onLogout }) => {
           </>
         )}
 
+        <div className="mt-4 mb-2 px-3">
+          <p className="text-xs font-medium text-teal-300 px-4 py-2 uppercase tracking-wider">
+            Akun
+          </p>
+        </div>
+        
         <button
           onClick={onLogout}
-          className="flex items-center p-4 hover:bg-blue-700 w-full text-left"
+          className="flex items-center px-4 py-3 mx-2 text-teal-100 rounded-md hover:bg-teal-600 transition-colors w-full text-left"
         >
           <LogOutIcon className="w-5 h-5 mr-3" />
           <span>Logout</span>
