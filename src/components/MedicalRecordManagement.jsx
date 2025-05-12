@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import supabase from "../supabaseClient";
 import {
   Box,
   Typography,
@@ -15,10 +16,6 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
   Grid,
   IconButton,
   Snackbar,
@@ -30,24 +27,19 @@ import {
   Delete as DeleteIcon,
   Search as SearchIcon,
 } from "@mui/icons-material";
-import axios from "axios";
 
 const MedicalRecordManagement = () => {
   const [medicalRecords, setMedicalRecords] = useState([]);
   const [filteredRecords, setFilteredRecords] = useState([]);
-  const [patients, setPatients] = useState([]);
-  const [doctors, setDoctors] = useState([]);
-  const [open, setOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(false);
   const [alertOpen, setAlertOpen] = useState(false);
   const [alertMessage, setAlertMessage] = useState("");
   const [alertSeverity, setAlertSeverity] = useState("success");
-
+  const [open, setOpen] = useState(false);  // Menambahkan state untuk dialog
   const [formData, setFormData] = useState({
-    id: "",
-    patientId: "",
-    doctorId: "",
+    patientName: "",
+    doctorName: "",
     visitDate: "",
     diagnosis: "",
     treatment: "",
@@ -75,15 +67,16 @@ const MedicalRecordManagement = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      // In a real application, replace these URLs with your actual API endpoints
-      const recordsResponse = await axios.get("/api/medicalRecords");
-      const patientsResponse = await axios.get("/api/patients");
-      const doctorsResponse = await axios.get("/api/doctors");
+      const { data: records, error: recordsError } = await supabase
+        .from("medical_records")
+        .select("*");
 
-      setMedicalRecords(recordsResponse.data);
-      setFilteredRecords(recordsResponse.data);
-      setPatients(patientsResponse.data);
-      setDoctors(doctorsResponse.data);
+      if (recordsError) {
+        throw new Error("Error fetching data");
+      }
+
+      setMedicalRecords(records);
+      setFilteredRecords(records);
     } catch (error) {
       console.error("Error fetching data:", error);
       showAlert("Failed to fetch data", "error");
@@ -105,9 +98,8 @@ const MedicalRecordManagement = () => {
   const handleOpen = (record = null) => {
     if (record) {
       setFormData({
-        id: record.id,
-        patientId: record.patientId,
-        doctorId: record.doctorId,
+        patientName: record.patientName,
+        doctorName: record.doctorName,
         visitDate: record.visitDate,
         diagnosis: record.diagnosis,
         treatment: record.treatment,
@@ -116,9 +108,8 @@ const MedicalRecordManagement = () => {
       });
     } else {
       setFormData({
-        id: "",
-        patientId: "",
-        doctorId: "",
+        patientName: "",
+        doctorName: "",
         visitDate: new Date().toISOString().split("T")[0],
         diagnosis: "",
         treatment: "",
@@ -143,33 +134,39 @@ const MedicalRecordManagement = () => {
 
   const handleSubmit = async () => {
     try {
-      if (formData.id) {
-        // Update existing record
-        await axios.put(`/api/medicalRecords/${formData.id}`, formData);
-        showAlert("Medical record updated successfully", "success");
-      } else {
-        // Create new record
-        await axios.post("/api/medicalRecords", formData);
-        showAlert("Medical record created successfully", "success");
-      }
+      const { error } = await supabase.from("medical_records").upsert([
+        {
+          patientName: formData.patientName,
+          doctorName: formData.doctorName,
+          visitDate: formData.visitDate,
+          diagnosis: formData.diagnosis,
+          treatment: formData.treatment,
+          prescription: formData.prescription,
+          notes: formData.notes,
+        },
+      ]);
+      if (error) throw error;
+      showAlert("Medical record saved successfully", "success");
       fetchData();
       handleClose();
     } catch (error) {
-      console.error("Error saving record:", error);
+      console.error("Error saving record:", error.message);
       showAlert("Failed to save medical record", "error");
     }
   };
 
-  const handleDelete = async (id) => {
-    if (
-      window.confirm("Are you sure you want to delete this medical record?")
-    ) {
+  const handleDelete = async (record) => {
+    if (window.confirm("Are you sure you want to delete this medical record?")) {
       try {
-        await axios.delete(`/api/medicalRecords/${id}`);
+        const { error } = await supabase
+          .from("medical_records")
+          .delete()
+          .match({ patientName: record.patientName, doctorName: record.doctorName });
+        if (error) throw error;
         fetchData();
         showAlert("Medical record deleted successfully", "success");
       } catch (error) {
-        console.error("Error deleting record:", error);
+        console.error("Error deleting record:", error.message);
         showAlert("Failed to delete medical record", "error");
       }
     }
@@ -232,8 +229,8 @@ const MedicalRecordManagement = () => {
                 </TableCell>
               </TableRow>
             ) : (
-              filteredRecords.map((record) => (
-                <TableRow key={record.id}>
+              filteredRecords.map((record, index) => (
+                <TableRow key={index}>
                   <TableCell>{record.patientName}</TableCell>
                   <TableCell>{record.doctorName}</TableCell>
                   <TableCell>
@@ -249,7 +246,7 @@ const MedicalRecordManagement = () => {
                     </IconButton>
                     <IconButton
                       color="error"
-                      onClick={() => handleDelete(record.id)}
+                      onClick={() => handleDelete(record)}
                     >
                       <DeleteIcon />
                     </IconButton>
@@ -268,38 +265,24 @@ const MedicalRecordManagement = () => {
         <DialogContent>
           <Grid container spacing={2} sx={{ mt: 1 }}>
             <Grid item xs={12} md={6}>
-              <FormControl fullWidth required>
-                <InputLabel>Patient</InputLabel>
-                <Select
-                  name="patientId"
-                  value={formData.patientId}
-                  onChange={handleChange}
-                  label="Patient"
-                >
-                  {patients.map((patient) => (
-                    <MenuItem key={patient.id} value={patient.id}>
-                      {patient.name}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+              <TextField
+                fullWidth
+                label="Patient Name"
+                name="patientName"
+                value={formData.patientName}
+                onChange={handleChange}
+                required
+              />
             </Grid>
             <Grid item xs={12} md={6}>
-              <FormControl fullWidth required>
-                <InputLabel>Doctor</InputLabel>
-                <Select
-                  name="doctorId"
-                  value={formData.doctorId}
-                  onChange={handleChange}
-                  label="Doctor"
-                >
-                  {doctors.map((doctor) => (
-                    <MenuItem key={doctor.id} value={doctor.id}>
-                      {doctor.name}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+              <TextField
+                fullWidth
+                label="Doctor Name"
+                name="doctorName"
+                value={formData.doctorName}
+                onChange={handleChange}
+                required
+              />
             </Grid>
             <Grid item xs={12} md={6}>
               <TextField
@@ -334,7 +317,6 @@ const MedicalRecordManagement = () => {
                 onChange={handleChange}
                 multiline
                 rows={2}
-                required
               />
             </Grid>
             <Grid item xs={12}>
@@ -351,7 +333,7 @@ const MedicalRecordManagement = () => {
             <Grid item xs={12}>
               <TextField
                 fullWidth
-                label="Additional Notes"
+                label="Notes"
                 name="notes"
                 value={formData.notes}
                 onChange={handleChange}
@@ -363,7 +345,12 @@ const MedicalRecordManagement = () => {
         </DialogContent>
         <DialogActions>
           <Button onClick={handleClose}>Cancel</Button>
-          <Button onClick={handleSubmit} variant="contained" color="primary">
+          <Button
+            onClick={handleSubmit}
+            variant="contained"
+            color="primary"
+            disabled={loading}
+          >
             {formData.id ? "Update" : "Save"}
           </Button>
         </DialogActions>
@@ -373,7 +360,6 @@ const MedicalRecordManagement = () => {
         open={alertOpen}
         autoHideDuration={6000}
         onClose={handleAlertClose}
-        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
       >
         <Alert
           onClose={handleAlertClose}
