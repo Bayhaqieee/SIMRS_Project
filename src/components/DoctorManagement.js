@@ -1,55 +1,39 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { PlusIcon, PencilIcon, TrashIcon, SearchIcon } from "lucide-react";
+import supabase from "../supabaseClient"; 
 
 const DoctorManagement = () => {
-  const [doctors, setDoctors] = useState([
-    {
-      id: 1,
-      name: "Dr. Agung Prasetyo",
-      specialization: "Umum",
-      phone: "08123456789",
-      status: "Aktif",
-    },
-    {
-      id: 2,
-      name: "Dr. Siti Rahayu",
-      specialization: "Bedah",
-      phone: "08234567890",
-      status: "Aktif",
-    },
-    {
-      id: 3,
-      name: "Dr. Budi Santoso",
-      specialization: "Jantung",
-      phone: "08345678901",
-      status: "Cuti",
-    },
-    {
-      id: 4,
-      name: "Dr. Rina Wijaya",
-      specialization: "Anak",
-      phone: "08456789012",
-      status: "Aktif",
-    },
-    {
-      id: 5,
-      name: "Dr. Hadi Gunawan",
-      specialization: "Syaraf",
-      phone: "08567890123",
-      status: "Tidak Aktif",
-    },
-  ]);
-
+  const [doctors, setDoctors] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentDoctor, setCurrentDoctor] = useState({
-    id: null,
-    name: "",
-    specialization: "",
-    phone: "",
-    status: "Aktif",
+    id_dokter: null,
+    nama: "",
+    spesialisasi: "",
+    telepon: "",
+    status: "Aktif", // Default value set to "Aktif"
   });
   const [isEditing, setIsEditing] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+
+  // Fetch data from Supabase when component mounts
+ useEffect(() => {
+  const fetchDoctors = async () => {
+    console.log('Fetching doctors from Supabase...');
+    const { data, error } = await supabase.from("dokter").select("*");
+    if (error) {
+      console.error("Error fetching data:", error.message);
+    } else {
+      console.log("Fetched Doctors:", data); 
+      setDoctors(data);
+    }
+  };
+  fetchDoctors();
+}, []);
+
+  // For debugging state updates
+  useEffect(() => {
+    console.log("Doctors state updated:", doctors);
+  }, [doctors]);
 
   const openModal = (doctor = null) => {
     if (doctor) {
@@ -57,49 +41,66 @@ const DoctorManagement = () => {
       setIsEditing(true);
     } else {
       setCurrentDoctor({
-        id: Date.now(),
-        name: "",
-        specialization: "",
-        phone: "",
-        status: "Aktif",
+        id_dokter: Date.now(),
+        nama: "",
+        spesialisasi: "",
+        telepon: "",
+        status: "Aktif", // Default value set to "Aktif"
       });
       setIsEditing(false);
     }
     setIsModalOpen(true);
   };
 
+  // Close modal
   const closeModal = () => {
     setIsModalOpen(false);
   };
 
+  // Handle input change in form
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setCurrentDoctor({ ...currentDoctor, [name]: value });
   };
 
-  const handleSubmit = (e) => {
+  // Handle form submit (add or edit doctor)
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (isEditing) {
       const updatedDoctors = doctors.map((doctor) =>
-        doctor.id === currentDoctor.id ? currentDoctor : doctor
+        doctor.id_dokter === currentDoctor.id_dokter ? currentDoctor : doctor
       );
       setDoctors(updatedDoctors);
     } else {
-      setDoctors([...doctors, currentDoctor]);
+      // Adding new doctor to Supabase
+      const { error } = await supabase.from("dokter").insert([currentDoctor]);
+      if (error) {
+        console.error("Error adding doctor:", error.message);
+      } else {
+        setDoctors([...doctors, currentDoctor]);
+      }
     }
     closeModal();
   };
 
-  const handleDelete = (id) => {
+  // Handle doctor delete
+  const handleDelete = async (id_dokter) => {
     if (window.confirm("Apakah anda yakin ingin menghapus dokter ini?")) {
-      setDoctors(doctors.filter((doctor) => doctor.id !== id));
+      // Delete from Supabase
+      const { error } = await supabase.from("dokter").delete().eq("id_dokter", id_dokter);
+      if (error) {
+        console.error("Error deleting doctor:", error.message);
+      } else {
+        setDoctors(doctors.filter((doctor) => doctor.id_dokter !== id_dokter));
+      }
     }
   };
 
+  // Filter doctors based on search term
   const filteredDoctors = doctors.filter(
     (doctor) =>
-      doctor.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      doctor.specialization.toLowerCase().includes(searchTerm.toLowerCase())
+      doctor.nama.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      doctor.spesialisasi.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
@@ -133,29 +134,16 @@ const DoctorManagement = () => {
             <thead>
               <tr className="text-left text-sm text-gray-500 border-b">
                 <th className="pb-3 text-right">Aksi</th>
+                <th className="pb-3">ID Dokter</th>
+                <th className="pb-3">Nama</th>
+                <th className="pb-3">Spesialisasi</th>
+                <th className="pb-3">No. Telepon</th>
+                <th className="pb-3">Status</th>
               </tr>
             </thead>
             <tbody>
               {filteredDoctors.map((doctor) => (
-                <tr key={doctor.id} className="border-b hover:bg-gray-50">
-                  <td className="py-3 pl-4">{doctor.id}</td>
-                  <td className="py-3">{doctor.name}</td>
-                  <td className="py-3">{doctor.specialization}</td>
-                  <td className="py-3">{doctor.phone}</td>
-                  <td className="py-3">
-                    <span
-                      className={`px-2 py-1 text-xs font-semibold rounded-full 
-                      ${
-                        doctor.status === "Aktif"
-                          ? "bg-green-100 text-green-800"
-                          : doctor.status === "Cuti"
-                          ? "bg-yellow-100 text-yellow-800"
-                          : "bg-gray-100 text-gray-800"
-                      }`}
-                    >
-                      {doctor.status}
-                    </span>
-                  </td>
+                <tr key={doctor.id_dokter} className="border-b hover:bg-gray-50">
                   <td className="py-3 text-right">
                     <button
                       className="text-blue-600 hover:text-blue-800 mr-3"
@@ -165,10 +153,26 @@ const DoctorManagement = () => {
                     </button>
                     <button
                       className="text-red-600 hover:text-red-800"
-                      onClick={() => handleDelete(doctor.id)}
+                      onClick={() => handleDelete(doctor.id_dokter)}
                     >
                       <TrashIcon className="h-5 w-5" />
                     </button>
+                  </td>
+                  <td className="py-3 pl-4">{doctor.id_dokter}</td>
+                  <td className="py-3">{doctor.nama}</td>
+                  <td className="py-3">{doctor.spesialisasi}</td>
+                  <td className="py-3">{doctor.telepon}</td>
+                  <td className="py-3">
+                    <span
+                      className={`px-2 py-1 text-xs font-semibold rounded-full 
+                        ${doctor.status === "Aktif"
+                          ? "bg-green-100 text-green-800"
+                          : doctor.status === "Cuti"
+                          ? "bg-yellow-100 text-yellow-800"
+                          : "bg-gray-100 text-gray-800"}`}
+                    >
+                      {doctor.status}
+                    </span>
                   </td>
                 </tr>
               ))}
@@ -191,8 +195,8 @@ const DoctorManagement = () => {
                 </label>
                 <input
                   type="text"
-                  name="name"
-                  value={currentDoctor.name}
+                  name="nama"
+                  value={currentDoctor.nama}
                   onChange={handleInputChange}
                   className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   required
@@ -205,8 +209,8 @@ const DoctorManagement = () => {
                 </label>
                 <input
                   type="text"
-                  name="specialization"
-                  value={currentDoctor.specialization}
+                  name="spesialisasi"
+                  value={currentDoctor.spesialisasi}
                   onChange={handleInputChange}
                   className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   required
@@ -219,8 +223,8 @@ const DoctorManagement = () => {
                 </label>
                 <input
                   type="text"
-                  name="phone"
-                  value={currentDoctor.phone}
+                  name="telepon"
+                  value={currentDoctor.telepon}
                   onChange={handleInputChange}
                   className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   required

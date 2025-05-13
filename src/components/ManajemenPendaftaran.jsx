@@ -1,126 +1,128 @@
 import React, { useState, useEffect } from "react";
 import { Search, PlusCircle, Edit2, Trash2, Eye } from "lucide-react";
+import supabase from "../supabaseClient";
 
 export default function ManajemenPendaftaran() {
-  const [registrations, setRegistrations] = useState([]);
+  const [pendaftaran, setPendaftaran] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
-  const [currentRegistration, setCurrentRegistration] = useState(null);
+  const [currentData, setCurrentData] = useState(null);
   const [formData, setFormData] = useState({
-    id: "",
-    patientName: "",
-    patientId: "",
-    registrationDate: "",
-    doctorName: "",
-    visitType: "",
-    status: "Waiting",
+    id_pasien: "",
+    nama_pasien: "",
+    tanggal: "",
+    dokter: "",
+    jeniskunjungan: "",
+    status: "Menunggu",
   });
   const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
-    // Fetch registrations data from API
-    // This is a mock implementation
-    const mockData = [
-      {
-        id: "1",
-        patientName: "Budi Santoso",
-        patientId: "P001",
-        registrationDate: "2025-05-04",
-        doctorName: "dr. Andi Wijaya",
-        visitType: "General",
-        status: "Completed",
-      },
-      {
-        id: "2",
-        patientName: "Siti Aminah",
-        patientId: "P002",
-        registrationDate: "2025-05-04",
-        doctorName: "dr. Diana Putri",
-        visitType: "Specialist",
-        status: "Waiting",
-      },
-      {
-        id: "3",
-        patientName: "Agus Rahmat",
-        patientId: "P003",
-        registrationDate: "2025-05-04",
-        doctorName: "dr. Budi Prakoso",
-        visitType: "Emergency",
-        status: "In Progress",
-      },
-    ];
-
-    setRegistrations(mockData);
+    fetchPendaftaran();
   }, []);
+
+  const fetchPendaftaran = async () => {
+    const { data, error } = await supabase
+      .from("pendaftaran")
+      .select("*")
+      .order("tanggal", { ascending: false });
+
+    if (!error) setPendaftaran(data);
+  };
+
+  const generatePatientId = () => {
+    const date = new Date();
+    const year = date.getFullYear().toString().slice(-2);
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const day = date.getDate().toString().padStart(2, '0');
+    const randomNum = Math.floor(1000 + Math.random() * 9000);
+    return parseInt(`${year}${month}${day}${randomNum}`, 10);
+  };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData({
-      ...formData,
-      [name]: value,
-    });
+    setFormData({ ...formData, [name]: value });
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
+  const handleSubmit = async (e) => {
+    e.preventDefault(); // Mencegah reload halaman
 
-    if (formData.id) {
-      // Update existing registration
-      setRegistrations(
-        registrations.map((reg) => (reg.id === formData.id ? formData : reg))
-      );
-    } else {
-      // Add new registration
-      const newId = (registrations.length + 1).toString();
-      setRegistrations([...registrations, { ...formData, id: newId }]);
+    if (!formData.nama_pasien) {
+      alert("Silakan isi nama pasien terlebih dahulu.");
+      return;
     }
 
-    resetForm();
-    setIsModalOpen(false);
+    // Generate ID pasien jika data baru
+    const submissionData = {
+      ...formData,
+      id_pasien: formData.id_pasien || generatePatientId(),
+      tanggal: formData.tanggal || new Date().toISOString().split('T')[0]
+    };
+
+    try {
+      if (formData.id_pasien) {
+        const { error } = await supabase
+          .from("pendaftaran")
+          .update(submissionData)
+          .eq("id_pasien", formData.id_pasien);
+
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from("pendaftaran")
+          .insert([submissionData]);
+
+        if (error) throw error;
+      }
+
+      resetForm();
+      setIsModalOpen(false);
+      fetchPendaftaran();
+    } catch (error) {
+      alert(`Gagal menyimpan data: ${error.message}`);
+    }
   };
 
-  const editRegistration = (registration) => {
-    setFormData(registration);
+  const editData = (data) => {
+    setFormData(data);
     setIsModalOpen(true);
   };
 
-  const viewRegistration = (registration) => {
-    setCurrentRegistration(registration);
+  const viewData = (data) => {
+    setCurrentData(data);
     setIsViewModalOpen(true);
   };
 
-  const deleteRegistration = (id) => {
+  const deleteData = async (id_pasien) => {
     if (window.confirm("Apakah Anda yakin ingin menghapus pendaftaran ini?")) {
-      setRegistrations(registrations.filter((reg) => reg.id !== id));
+      const { error } = await supabase.from("pendaftaran").delete().eq("id_pasien", id_pasien);
+      if (!error) fetchPendaftaran();
     }
   };
 
   const resetForm = () => {
     setFormData({
-      id: "",
-      patientName: "",
-      patientId: "",
-      registrationDate: "",
-      doctorName: "",
-      visitType: "",
-      status: "Waiting",
+      id_pasien: "",
+      nama_pasien: "",
+      tanggal: "",
+      dokter: "",
+      jeniskunjungan: "",
+      status: "Menunggu",
     });
   };
 
-  const filteredRegistrations = registrations.filter(
-    (reg) =>
-      reg.patientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      reg.patientId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      reg.doctorName.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredData = pendaftaran.filter(
+    (item) =>
+      item.nama_pasien?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.id_pasien?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.dokter?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
     <div className="p-6">
       <div className="mb-6">
         <h1 className="text-2xl font-bold mb-2">Manajemen Pendaftaran</h1>
-        <p className="text-gray-600">
-          Kelola pendaftaran pasien untuk kunjungan medis
-        </p>
+        <p className="text-gray-600">Kelola pendaftaran pasien untuk kunjungan medis</p>
       </div>
 
       <div className="flex justify-between items-center mb-6">
@@ -128,7 +130,7 @@ export default function ManajemenPendaftaran() {
           <input
             type="text"
             placeholder="Cari pendaftaran..."
-            className="pl-10 pr-4 py-2 border rounded-lg w-full"
+            className="pl-10 pr-4 py-2 border rounded-lg w-full font-normal"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -151,78 +153,32 @@ export default function ManajemenPendaftaran() {
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                ID Pasien
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Nama Pasien
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Tanggal
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Dokter
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Jenis Kunjungan
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Status
-              </th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Aksi
-              </th>
+              <th className="px-6 py-3 text-left">ID Pasien</th>
+              <th className="px-6 py-3 text-left">Nama Pasien</th>
+              <th className="px-6 py-3 text-left">Tanggal</th>
+              <th className="px-6 py-3 text-left">Dokter</th>
+              <th className="px-6 py-3 text-left">Jenis Kunjungan</th>
+              <th className="px-6 py-3 text-left">Status</th>
+              <th className="px-6 py-3 text-right">Aksi</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {filteredRegistrations.map((registration) => (
-              <tr key={registration.id}>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  {registration.patientId}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  {registration.patientName}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  {registration.registrationDate}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  {registration.doctorName}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  {registration.visitType}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span
-                    className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full
-                    ${
-                      registration.status === "Completed"
-                        ? "bg-green-100 text-green-800"
-                        : registration.status === "Waiting"
-                        ? "bg-yellow-100 text-yellow-800"
-                        : "bg-blue-100 text-blue-800"
-                    }`}
-                  >
-                    {registration.status}
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                  <button
-                    onClick={() => viewRegistration(registration)}
-                    className="text-indigo-600 hover:text-indigo-900 mr-3"
-                  >
+            {filteredData.map((item) => (
+              <tr key={item.id_pasien}>
+                <td className="px-6 py-4">{item.id_pasien}</td>
+                <td className="px-6 py-4">{item.nama_pasien}</td>
+                <td className="px-6 py-4">{item.tanggal}</td>
+                <td className="px-6 py-4">{item.dokter}</td>
+                <td className="px-6 py-4">{item.jeniskunjungan}</td>
+                <td className="px-6 py-4">{item.status}</td>
+                <td className="px-6 py-4 text-right space-x-2">
+                  <button onClick={() => viewData(item)} className="text-indigo-600">
                     <Eye size={18} />
                   </button>
-                  <button
-                    onClick={() => editRegistration(registration)}
-                    className="text-yellow-600 hover:text-yellow-900 mr-3"
-                  >
+                  <button onClick={() => editData(item)} className="text-yellow-600">
                     <Edit2 size={18} />
                   </button>
-                  <button
-                    onClick={() => deleteRegistration(registration.id)}
-                    className="text-red-600 hover:text-red-900"
-                  >
+                  <button onClick={() => deleteData(item.id_pasien)} className="text-red-600">
                     <Trash2 size={18} />
                   </button>
                 </td>
@@ -232,103 +188,104 @@ export default function ManajemenPendaftaran() {
         </table>
       </div>
 
-      {/* Add/Edit Modal */}
+      {/* Modal Form */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-8 max-w-md w-full">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
             <h2 className="text-xl font-bold mb-4">
-              {formData.id ? "Edit Pendaftaran" : "Tambah Pendaftaran Baru"}
+              {formData.id_pasien ? "Edit Pendaftaran" : "Tambah Pendaftaran"}
             </h2>
-
             <form onSubmit={handleSubmit}>
-              <div className="mb-4">
-                <label className="block text-gray-700 text-sm font-bold mb-2">
-                  ID Pasien
-                </label>
-                <input
-                  type="text"
-                  name="patientId"
-                  value={formData.patientId}
-                  onChange={handleInputChange}
-                  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight"
-                  required
-                />
-              </div>
+              {formData.id_pasien && (
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700">
+                    ID Pasien
+                  </label>
+                  <input
+                    type="text"
+                    value={`P-${formData.id_pasien}`}
+                    className="w-full border px-3 py-2 rounded bg-gray-100 font-normal"
+                    readOnly
+                  />
+                </div>
+              )}
 
               <div className="mb-4">
-                <label className="block text-gray-700 text-sm font-bold mb-2">
+                <label className="block text-sm font-medium text-gray-700">
                   Nama Pasien
                 </label>
                 <input
                   type="text"
-                  name="patientName"
-                  value={formData.patientName}
+                  name="nama_pasien"
+                  value={formData.nama_pasien}
                   onChange={handleInputChange}
-                  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight"
+                  className="w-full border px-3 py-2 rounded font-normal"
                   required
+                  placeholder="Masukkan Nama Pasien"
                 />
               </div>
 
               <div className="mb-4">
-                <label className="block text-gray-700 text-sm font-bold mb-2">
-                  Tanggal Pendaftaran
+                <label className="block text-sm font-medium text-gray-700">
+                  Tanggal
                 </label>
                 <input
                   type="date"
-                  name="registrationDate"
-                  value={formData.registrationDate}
+                  name="tanggal"
+                  value={formData.tanggal}
                   onChange={handleInputChange}
-                  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight"
+                  className="w-full border px-3 py-2 rounded font-normal"
                   required
                 />
               </div>
 
               <div className="mb-4">
-                <label className="block text-gray-700 text-sm font-bold mb-2">
+                <label className="block text-sm font-medium text-gray-700">
                   Dokter
                 </label>
                 <input
                   type="text"
-                  name="doctorName"
-                  value={formData.doctorName}
+                  name="dokter"
+                  value={formData.dokter}
                   onChange={handleInputChange}
-                  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight"
+                  className="w-full border px-3 py-2 rounded font-normal"
                   required
+                  placeholder="Masukkan Nama Dokter"
                 />
               </div>
 
               <div className="mb-4">
-                <label className="block text-gray-700 text-sm font-bold mb-2">
+                <label className="block text-sm font-medium text-gray-700">
                   Jenis Kunjungan
                 </label>
                 <select
-                  name="visitType"
-                  value={formData.visitType}
+                  name="jeniskunjungan"
+                  value={formData.jeniskunjungan}
                   onChange={handleInputChange}
-                  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight"
+                  className="w-full border px-3 py-2 rounded font-normal"
                   required
                 >
-                  <option value="">Pilih Jenis</option>
-                  <option value="General">Umum</option>
-                  <option value="Specialist">Spesialis</option>
-                  <option value="Emergency">Darurat</option>
+                  <option value="">Pilih</option>
+                  <option value="Umum">Umum</option>
+                  <option value="Spesialis">Spesialis</option>
+                  <option value="Darurat">Darurat</option>
                 </select>
               </div>
 
               <div className="mb-4">
-                <label className="block text-gray-700 text-sm font-bold mb-2">
+                <label className="block text-sm font-medium text-gray-700">
                   Status
                 </label>
                 <select
                   name="status"
                   value={formData.status}
                   onChange={handleInputChange}
-                  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight"
+                  className="w-full border px-3 py-2 rounded font-normal"
                   required
                 >
-                  <option value="Waiting">Menunggu</option>
-                  <option value="In Progress">Sedang Berlangsung</option>
-                  <option value="Completed">Selesai</option>
+                  <option value="Menunggu">Menunggu</option>
+                  <option value="Sedang Berlangsung">Sedang Berlangsung</option>
+                  <option value="Selesai">Selesai</option>
                 </select>
               </div>
 
@@ -336,15 +293,15 @@ export default function ManajemenPendaftaran() {
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="bg-gray-300 text-gray-800 px-4 py-2 rounded hover:bg-gray-400"
+                  className="bg-gray-300 px-4 py-2 rounded font-normal"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+                  className="bg-blue-500 text-white px-4 py-2 rounded font-normal"
                 >
-                  {formData.id ? "Update" : "Simpan"}
+                  Simpan
                 </button>
               </div>
             </form>
@@ -352,64 +309,30 @@ export default function ManajemenPendaftaran() {
         </div>
       )}
 
-      {/* View Modal */}
-      {isViewModalOpen && currentRegistration && (
+      {/* Modal View */}
+      {isViewModalOpen && currentData && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-8 max-w-md w-full">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
             <h2 className="text-xl font-bold mb-4">Detail Pendaftaran</h2>
-
-            <div className="mb-6">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm text-gray-500">ID Pasien</p>
-                  <p className="font-medium">{currentRegistration.patientId}</p>
+            <div className="grid grid-cols-2 gap-4">
+              {[
+                ["ID Pasien", currentData.id_pasien],
+                ["Nama Pasien", currentData.nama_pasien],
+                ["Tanggal", currentData.tanggal],
+                ["Dokter", currentData.dokter],
+                ["Jenis Kunjungan", currentData.jeniskunjungan],
+                ["Status", currentData.status],
+              ].map(([label, value]) => (
+                <div key={label}>
+                  <p className="text-sm text-gray-500">{label}</p>
+                  <p className="font-medium">{value}</p>
                 </div>
-                <div>
-                  <p className="text-sm text-gray-500">Nama Pasien</p>
-                  <p className="font-medium">
-                    {currentRegistration.patientName}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Tanggal Pendaftaran</p>
-                  <p className="font-medium">
-                    {currentRegistration.registrationDate}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Dokter</p>
-                  <p className="font-medium">
-                    {currentRegistration.doctorName}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Jenis Kunjungan</p>
-                  <p className="font-medium">{currentRegistration.visitType}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Status</p>
-                  <p className="font-medium">
-                    <span
-                      className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full
-                      ${
-                        currentRegistration.status === "Completed"
-                          ? "bg-green-100 text-green-800"
-                          : currentRegistration.status === "Waiting"
-                          ? "bg-yellow-100 text-yellow-800"
-                          : "bg-blue-100 text-blue-800"
-                      }`}
-                    >
-                      {currentRegistration.status}
-                    </span>
-                  </p>
-                </div>
-              </div>
+              ))}
             </div>
-
-            <div className="flex justify-end">
+            <div className="mt-4 text-right">
               <button
                 onClick={() => setIsViewModalOpen(false)}
-                className="bg-gray-300 text-gray-800 px-4 py-2 rounded hover:bg-gray-400"
+                className="bg-gray-300 px-4 py-2 rounded font-normal"
               >
                 Tutup
               </button>
