@@ -1,56 +1,22 @@
 // src/components/TariffManagement.js
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { PlusIcon, PencilIcon, TrashIcon, SearchIcon } from "lucide-react";
+import supabase from "../supabaseClient";
 
 const TariffManagement = () => {
-  const [tariffs, setTariffs] = useState([
-    {
-      id: "TRF001",
-      serviceName: "Konsultasi Umum",
-      category: "Konsultasi",
-      price: 150000,
-      description: "Konsultasi dengan dokter umum",
-    },
-    {
-      id: "TRF002",
-      serviceName: "Konsultasi Spesialis",
-      category: "Konsultasi",
-      price: 300000,
-      description: "Konsultasi dengan dokter spesialis",
-    },
-    {
-      id: "TRF003",
-      serviceName: "Cek Darah Lengkap",
-      category: "Laboratorium",
-      price: 250000,
-      description: "Pemeriksaan darah lengkap",
-    },
-    {
-      id: "TRF004",
-      serviceName: "Rontgen Dada",
-      category: "Radiologi",
-      price: 500000,
-      description: "Rontgen untuk area dada",
-    },
-    {
-      id: "TRF005",
-      serviceName: "Rawat Inap (per hari)",
-      category: "Rawat Inap",
-      price: 750000,
-      description: "Biaya kamar rawat inap standar per hari",
-    },
-  ]);
-
+  const [tariffs, setTariffs] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentTariff, setCurrentTariff] = useState({
-    id: "",
-    serviceName: "",
-    category: "",
-    price: 0,
-    description: "",
+    id_tarif: "",
+    nama_layanan: "",
+    kategori: "",
+    harga: "",
+    deskripsi: "",
   });
   const [isEditing, setIsEditing] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const categories = [
     "Konsultasi",
@@ -61,24 +27,74 @@ const TariffManagement = () => {
     "Lainnya",
   ];
 
-  const generateId = () => {
-    const lastId =
-      tariffs.length > 0 ? tariffs[tariffs.length - 1].id : "TRF000";
-    const numericPart = parseInt(lastId.substring(3));
-    return `TRF${String(numericPart + 1).padStart(3, "0")}`;
+  // Fetch all tariffs from Supabase
+  const fetchTariffs = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from("tarif")
+        .select("*")
+        .order("id_tarif", { ascending: true });
+
+      if (error) {
+        throw error;
+      }
+
+      setTariffs(data);
+    } catch (error) {
+      console.error("Error fetching tariffs:", error.message);
+      setError("Gagal memuat data tarif");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const openModal = (tariff = null) => {
+  // Load tariffs on component mount
+  useEffect(() => {
+    fetchTariffs();
+  }, []);
+
+  const generateId = async () => {
+    try {
+      // Get the highest id from Supabase
+      const { data, error } = await supabase
+        .from("tarif")
+        .select("id_tarif")
+        .order("id_tarif", { ascending: false })
+        .limit(1);
+
+      if (error) throw error;
+
+      if (data && data.length > 0) {
+        // Increment the highest ID by 1
+        return parseInt(data[0].id_tarif) + 1;
+      } else {
+        return 1001; // First entry starts at 1001
+      }
+    } catch (error) {
+      console.error("Error generating ID:", error.message);
+      return new Date().getTime(); // Fallback to timestamp-based ID
+    }
+  };
+
+  const openModal = async (tariff = null) => {
     if (tariff) {
-      setCurrentTariff(tariff);
+      setCurrentTariff({
+        id_tarif: tariff.id_tarif,
+        nama_layanan: tariff.nama_layanan,
+        kategori: tariff.kategori,
+        harga: tariff.harga,
+        deskripsi: tariff.deskripsi,
+      });
       setIsEditing(true);
     } else {
+      const newId = await generateId();
       setCurrentTariff({
-        id: generateId(),
-        serviceName: "",
-        category: "Konsultasi",
-        price: 0,
-        description: "",
+        id_tarif: newId,
+        nama_layanan: "",
+        kategori: "Konsultasi",
+        harga: 0,
+        deskripsi: "",
       });
       setIsEditing(false);
     }
@@ -89,46 +105,129 @@ const TariffManagement = () => {
     setIsModalOpen(false);
   };
 
+  // Format harga input with thousand separator
+  const formatHargaInput = (value) => {
+    // Remove non-digit characters
+    const numericValue = value.replace(/[^\d]/g, '');
+    
+    // Format with thousand separator
+    return numericValue.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  };
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setCurrentTariff({
-      ...currentTariff,
-      [name]: name === "price" ? parseInt(value) || 0 : value,
-    });
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (isEditing) {
-      const updatedTariffs = tariffs.map((tariff) =>
-        tariff.id === currentTariff.id ? currentTariff : tariff
-      );
-      setTariffs(updatedTariffs);
+    
+    if (name === "harga") {
+      // Format the price with thousand separator
+      const formattedValue = formatHargaInput(value);
+      setCurrentTariff({
+        ...currentTariff,
+        [name]: formattedValue,
+      });
     } else {
-      setTariffs([...tariffs, currentTariff]);
+      setCurrentTariff({
+        ...currentTariff,
+        [name]: value,
+      });
     }
-    closeModal();
   };
 
-  const handleDelete = (id) => {
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    try {
+      // Convert harga to integer for database storage
+      const hargaValue = currentTariff.harga ? parseInt(currentTariff.harga.replace(/[^\d]/g, '')) : 0;
+      
+      if (isEditing) {
+        // Update existing tariff
+        const { error } = await supabase
+          .from("tarif")
+          .update({
+            nama_layanan: currentTariff.nama_layanan,
+            kategori: currentTariff.kategori,
+            harga: hargaValue,
+            deskripsi: currentTariff.deskripsi,
+          })
+          .eq("id_tarif", currentTariff.id_tarif);
+
+        if (error) throw error;
+      } else {
+        // Insert new tariff
+        const { error } = await supabase
+          .from("tarif")
+          .insert([
+            {
+              id_tarif: currentTariff.id_tarif,
+              nama_layanan: currentTariff.nama_layanan,
+              kategori: currentTariff.kategori,
+              harga: hargaValue,
+              deskripsi: currentTariff.deskripsi,
+            },
+          ]);
+
+        if (error) throw error;
+      }
+      
+      // Refresh tariff list
+      fetchTariffs();
+      closeModal();
+    } catch (error) {
+      console.error("Error saving tariff:", error.message);
+      alert(`Gagal menyimpan data: ${error.message}`);
+    }
+  };
+
+  const handleDelete = async (id) => {
     if (window.confirm("Apakah anda yakin ingin menghapus tarif ini?")) {
-      setTariffs(tariffs.filter((tariff) => tariff.id !== id));
+      try {
+        const { error } = await supabase
+          .from("tarif")
+          .delete()
+          .eq("id_tarif", id);
+
+        if (error) throw error;
+        
+        // Refresh tariff list
+        fetchTariffs();
+      } catch (error) {
+        console.error("Error deleting tariff:", error.message);
+        alert(`Gagal menghapus data: ${error.message}`);
+      }
     }
   };
 
   const filteredTariffs = tariffs.filter(
     (tariff) =>
-      tariff.serviceName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      tariff.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      tariff.id.toLowerCase().includes(searchTerm.toLowerCase())
+      tariff.nama_layanan.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      tariff.kategori.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      tariff.id_tarif.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat("id-ID", {
       style: "currency",
       currency: "IDR",
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
     }).format(amount);
   };
+
+  if (error) {
+    return (
+      <div className="p-6">
+        <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6">
+          <p>{error}</p>
+          <button 
+            className="mt-2 text-blue-600 hover:underline"
+            onClick={fetchTariffs}
+          >
+            Coba lagi
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6">
@@ -156,49 +255,66 @@ const TariffManagement = () => {
           </button>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="text-left text-sm text-gray-500 border-b">
-                <th className="pb-3 pl-4">ID</th>
-                <th className="pb-3">Nama Layanan</th>
-                <th className="pb-3">Kategori</th>
-                <th className="pb-3">Harga</th>
-                <th className="pb-3">Deskripsi</th>
-                <th className="pb-3 text-right">Aksi</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredTariffs.map((tariff) => (
-                <tr key={tariff.id} className="border-b hover:bg-gray-50">
-                  <td className="py-3 pl-4">{tariff.id}</td>
-                  <td className="py-3">{tariff.serviceName}</td>
-                  <td className="py-3">{tariff.category}</td>
-                  <td className="py-3">{formatCurrency(tariff.price)}</td>
-                  <td className="py-3">
-                    {tariff.description.length > 30
-                      ? `${tariff.description.substring(0, 30)}...`
-                      : tariff.description}
-                  </td>
-                  <td className="py-3 text-right">
-                    <button
-                      className="text-blue-600 hover:text-blue-800 mr-3"
-                      onClick={() => openModal(tariff)}
-                    >
-                      <PencilIcon className="h-5 w-5" />
-                    </button>
-                    <button
-                      className="text-red-600 hover:text-red-800"
-                      onClick={() => handleDelete(tariff.id)}
-                    >
-                      <TrashIcon className="h-5 w-5" />
-                    </button>
-                  </td>
+        {loading ? (
+          <div className="text-center py-10">
+            <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent"></div>
+            <p className="mt-2 text-gray-600">Memuat data...</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="text-left text-sm text-gray-500 border-b">
+                  <th className="pb-3 pl-4">ID</th>
+                  <th className="pb-3">Nama Layanan</th>
+                  <th className="pb-3">Kategori</th>
+                  <th className="pb-3">Harga</th>
+                  <th className="pb-3">Deskripsi</th>
+                  <th className="pb-3 text-right">Aksi</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {filteredTariffs.length > 0 ? (
+                  filteredTariffs.map((tariff) => (
+                    <tr key={tariff.id_tarif} className="border-b hover:bg-gray-50">
+                      <td className="py-3 pl-4">{tariff.id_tarif}</td>
+                      <td className="py-3">{tariff.nama_layanan}</td>
+                      <td className="py-3">{tariff.kategori}</td>
+                      <td className="py-3">{formatCurrency(tariff.harga)}</td>
+                      <td className="py-3">
+                        {tariff.deskripsi && tariff.deskripsi.length > 30
+                          ? `${tariff.deskripsi.substring(0, 30)}...`
+                          : tariff.deskripsi}
+                      </td>
+                      <td className="py-3 text-right">
+                        <button
+                          className="text-blue-600 hover:text-blue-800 mr-3"
+                          onClick={() => openModal(tariff)}
+                        >
+                          <PencilIcon className="h-5 w-5" />
+                        </button>
+                        <button
+                          className="text-red-600 hover:text-red-800"
+                          onClick={() => handleDelete(tariff.id_tarif)}
+                        >
+                          <TrashIcon className="h-5 w-5" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan="6" className="py-8 text-center text-gray-500">
+                      {searchTerm 
+                        ? "Tidak ada tarif yang sesuai dengan pencarian" 
+                        : "Belum ada data tarif. Klik 'Tambah Tarif' untuk menambahkan data."}
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {isModalOpen && (
@@ -216,8 +332,8 @@ const TariffManagement = () => {
                   </label>
                   <input
                     type="text"
-                    name="id"
-                    value={currentTariff.id}
+                    name="id_tarif"
+                    value={currentTariff.id_tarif}
                     className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-100"
                     disabled
                   />
@@ -229,8 +345,8 @@ const TariffManagement = () => {
                   </label>
                   <input
                     type="text"
-                    name="serviceName"
-                    value={currentTariff.serviceName}
+                    name="nama_layanan"
+                    value={currentTariff.nama_layanan}
                     onChange={handleInputChange}
                     className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     required
@@ -242,8 +358,8 @@ const TariffManagement = () => {
                     Kategori
                   </label>
                   <select
-                    name="category"
-                    value={currentTariff.category}
+                    name="kategori"
+                    value={currentTariff.kategori}
                     onChange={handleInputChange}
                     className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     required
@@ -261,13 +377,13 @@ const TariffManagement = () => {
                     Harga (Rp)
                   </label>
                   <input
-                    type="number"
-                    name="price"
-                    value={currentTariff.price}
+                    type="text"
+                    name="harga"
+                    value={currentTariff.harga}
                     onChange={handleInputChange}
                     className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    min="0"
                     required
+                    placeholder="Contoh: 150000"
                   />
                 </div>
 
@@ -276,8 +392,8 @@ const TariffManagement = () => {
                     Deskripsi
                   </label>
                   <textarea
-                    name="description"
-                    value={currentTariff.description}
+                    name="deskripsi"
+                    value={currentTariff.deskripsi}
                     onChange={handleInputChange}
                     className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     rows="3"

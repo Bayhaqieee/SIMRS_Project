@@ -1,5 +1,5 @@
-// src/components/StaffManagement.js
-import React, { useState } from "react";
+// src/components/StaffManagement.jsx
+import React, { useState, useEffect } from "react";
 import {
   PlusIcon,
   PencilIcon,
@@ -7,77 +7,22 @@ import {
   SearchIcon,
   KeyIcon,
 } from "lucide-react";
+import supabase from "../supabaseClient";
 
 const StaffManagement = () => {
-  const [staff, setStaff] = useState([
-    {
-      id: "STF001",
-      name: "Darmawan",
-      nik: "3301234567890010",
-      role: "Admin",
-      email: "darmawan@klinik.com",
-      phone: "081234567890",
-      address: "Jl. Merdeka No. 45, Jakarta",
-      joinDate: "2023-01-10",
-      status: "Aktif",
-    },
-    {
-      id: "STF002",
-      name: "Sinta Dewi",
-      nik: "3301234567890011",
-      role: "Perawat",
-      email: "sinta@klinik.com",
-      phone: "081234567891",
-      address: "Jl. Pahlawan No. 12, Jakarta",
-      joinDate: "2023-02-15",
-      status: "Aktif",
-    },
-    {
-      id: "STF003",
-      name: "Bagus Prakoso",
-      nik: "3301234567890012",
-      role: "Apoteker",
-      email: "bagus@klinik.com",
-      phone: "081234567892",
-      address: "Jl. Sudirman No. 78, Jakarta",
-      joinDate: "2023-03-20",
-      status: "Aktif",
-    },
-    {
-      id: "STF004",
-      name: "Maya Sari",
-      nik: "3301234567890013",
-      role: "Resepsionis",
-      email: "maya@klinik.com",
-      phone: "081234567893",
-      address: "Jl. Gatot Subroto No. 33, Jakarta",
-      joinDate: "2023-04-05",
-      status: "Cuti",
-    },
-    {
-      id: "STF005",
-      name: "Rudi Santoso",
-      nik: "3301234567890014",
-      role: "Teknisi Lab",
-      email: "rudi@klinik.com",
-      phone: "081234567894",
-      address: "Jl. Asia Afrika No. 56, Jakarta",
-      joinDate: "2023-05-12",
-      status: "Tidak Aktif",
-    },
-  ]);
-
+  const [staff, setStaff] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+  
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [currentStaff, setCurrentStaff] = useState({
-    id: "",
-    name: "",
-    nik: "",
-    role: "Admin",
+    id_petugas: "",
+    nama_petugas: "",
+    telepon: "",
+    jabatan: "Admin",
     email: "",
-    phone: "",
-    address: "",
-    joinDate: "",
+    tanggalbergabung: "",
     status: "Aktif",
   });
   const [isEditing, setIsEditing] = useState(false);
@@ -89,10 +34,51 @@ const StaffManagement = () => {
   const roles = ["Admin", "Perawat", "Apoteker", "Resepsionis", "Teknisi Lab"];
   const statusOptions = ["Aktif", "Cuti", "Tidak Aktif"];
 
+  // Fetch staff data from Supabase on component mount
+  useEffect(() => {
+    fetchStaff();
+  }, []);
+
+  const fetchStaff = async () => {
+    try {
+      setIsLoading(true);
+      const { data, error } = await supabase
+        .from('petugas')
+        .select('*')
+        .order('id_petugas', { ascending: true });
+      
+      if (error) throw error;
+      
+      console.log("Data dari Supabase:", data); // Untuk debugging
+      setStaff(data || []);
+    } catch (error) {
+      console.error("Error fetching staff:", error.message);
+      setError("Gagal memuat data petugas");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const generateId = () => {
-    const lastId = staff.length > 0 ? staff[staff.length - 1].id : "STF000";
-    const numericPart = parseInt(lastId.substring(3));
-    return `STF${String(numericPart + 1).padStart(3, "0")}`;
+    // Membuat ID numerik untuk tipe data bigint
+    if (staff.length === 0) {
+      return 1001; // ID awal jika tidak ada data
+    }
+    
+    try {
+      // Mencari id_petugas tertinggi
+      const lastStaffId = staff.reduce((maxId, current) => {
+        const currentId = parseInt(current.id_petugas) || 0;
+        return currentId > maxId ? currentId : maxId;
+      }, 0);
+      
+      // ID baru = ID tertinggi + 1
+      return lastStaffId + 1;
+    } catch (error) {
+      console.error("Error generating ID:", error);
+      // Fallback jika terjadi kesalahan
+      return Math.floor(Math.random() * 9000) + 1000; // ID random 1000-9999
+    }
   };
 
   const openModal = (staffMember = null) => {
@@ -102,14 +88,12 @@ const StaffManagement = () => {
     } else {
       const today = new Date().toISOString().split("T")[0];
       setCurrentStaff({
-        id: generateId(),
-        name: "",
-        nik: "",
-        role: "Admin",
+        id_petugas: generateId(),
+        nama_petugas: "",
+        telepon: "",
+        jabatan: "Admin",
         email: "",
-        phone: "",
-        address: "",
-        joinDate: today,
+        tanggalbergabung: today,
         status: "Aktif",
       });
       setIsEditing(false);
@@ -138,20 +122,60 @@ const StaffManagement = () => {
     setCurrentStaff({ ...currentStaff, [name]: value });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (isEditing) {
-      const updatedStaff = staff.map((s) =>
-        s.id === currentStaff.id ? currentStaff : s
-      );
-      setStaff(updatedStaff);
-    } else {
-      setStaff([...staff, currentStaff]);
+    
+    try {
+      // Buat salinan dari objek currentStaff untuk mengirim ke Supabase
+      const staffData = { ...currentStaff };
+      
+      // Pastikan id_petugas berupa angka, bukan string
+      if (!isEditing) {
+        staffData.id_petugas = parseInt(staffData.id_petugas);
+      }
+      
+      console.log("Data yang akan disimpan:", staffData); // Untuk debugging
+      
+      if (isEditing) {
+        // Update existing staff member
+        const { data, error } = await supabase
+          .from('petugas')
+          .update({
+            nama_petugas: staffData.nama_petugas,
+            telepon: staffData.telepon,
+            jabatan: staffData.jabatan,
+            email: staffData.email,
+            tanggalbergabung: staffData.tanggalbergabung,
+            status: staffData.status
+          })
+          .eq('id_petugas', staffData.id_petugas);
+        
+        if (error) throw error;
+        
+        console.log("Data berhasil diupdate:", data);
+        
+      } else {
+        // Insert new staff member
+        const { data, error } = await supabase
+          .from('petugas')
+          .insert([staffData]);
+        
+        if (error) throw error;
+        
+        console.log("Data berhasil ditambahkan:", data);
+      }
+      
+      // Refresh data from server
+      closeModal();
+      fetchStaff();
+      
+    } catch (error) {
+      console.error("Error saving staff:", error);
+      alert("Gagal menyimpan data petugas: " + error.message);
     }
-    closeModal();
   };
 
-  const handlePasswordSubmit = (e) => {
+  const handlePasswordSubmit = async (e) => {
     e.preventDefault();
 
     // Password validation
@@ -165,25 +189,49 @@ const StaffManagement = () => {
       return;
     }
 
-    // In a real app, you would update the password in the backend
-    // For demo purposes, we'll just show an alert
-    alert(`Password untuk ${currentStaff.name} telah diubah`);
-
-    closePasswordModal();
+    try {
+      // In a real app using Supabase Auth, you would use something like:
+      // const { error } = await supabase.auth.admin.updateUserById(
+      //   userId,
+      //   { password: password }
+      // );
+      
+      // For demo purposes:
+      alert(`Password untuk ${currentStaff.nama_petugas} telah diubah`);
+      closePasswordModal();
+      
+    } catch (error) {
+      console.error("Error updating password:", error.message);
+      setPasswordError("Gagal mengubah password: " + error.message);
+    }
   };
 
-  const handleDelete = (id) => {
+  const handleDelete = async (id) => {
     if (window.confirm("Apakah anda yakin ingin menghapus petugas ini?")) {
-      setStaff(staff.filter((s) => s.id !== id));
+      try {
+        const { error } = await supabase
+          .from('petugas')
+          .delete()
+          .eq('id_petugas', id);
+        
+        if (error) throw error;
+        
+        // Update local state
+        setStaff(staff.filter(s => s.id_petugas !== id));
+        
+      } catch (error) {
+        console.error("Error deleting staff:", error.message);
+        alert("Gagal menghapus petugas: " + error.message);
+      }
     }
   };
 
   const filteredStaff = staff.filter(
     (s) =>
-      s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      s.role.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      s.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      s.email.toLowerCase().includes(searchTerm.toLowerCase())
+      s.nama_petugas?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      s.jabatan?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (s.id_petugas?.toString().includes(searchTerm)) ||
+      s.email?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const getStatusBadge = (status) => {
@@ -209,6 +257,11 @@ const StaffManagement = () => {
       default:
         return null;
     }
+  };
+
+  // Utility untuk menampilkan ID dengan format STF di tampilan
+  const formatIdDisplay = (id) => {
+    return `STF${id}`;
   };
 
   return (
@@ -237,56 +290,73 @@ const StaffManagement = () => {
           </button>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="text-left text-sm text-gray-500 border-b">
-                <th className="pb-3 pl-4">ID</th>
-                <th className="pb-3">Nama</th>
-                <th className="pb-3">Jabatan</th>
-                <th className="pb-3">Email</th>
-                <th className="pb-3">Telepon</th>
-                <th className="pb-3">Tanggal Bergabung</th>
-                <th className="pb-3">Status</th>
-                <th className="pb-3 text-right">Aksi</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredStaff.map((s) => (
-                <tr key={s.id} className="border-b hover:bg-gray-50">
-                  <td className="py-3 pl-4">{s.id}</td>
-                  <td className="py-3">{s.name}</td>
-                  <td className="py-3">{s.role}</td>
-                  <td className="py-3">{s.email}</td>
-                  <td className="py-3">{s.phone}</td>
-                  <td className="py-3">{s.joinDate}</td>
-                  <td className="py-3">{getStatusBadge(s.status)}</td>
-                  <td className="py-3 text-right">
-                    <button
-                      className="text-green-600 hover:text-green-800 mr-3"
-                      onClick={() => openPasswordModal(s)}
-                      title="Reset Password"
-                    >
-                      <KeyIcon className="h-5 w-5" />
-                    </button>
-                    <button
-                      className="text-blue-600 hover:text-blue-800 mr-3"
-                      onClick={() => openModal(s)}
-                    >
-                      <PencilIcon className="h-5 w-5" />
-                    </button>
-                    <button
-                      className="text-red-600 hover:text-red-800"
-                      onClick={() => handleDelete(s.id)}
-                    >
-                      <TrashIcon className="h-5 w-5" />
-                    </button>
-                  </td>
+        {isLoading ? (
+          <div className="text-center py-8">
+            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500 mx-auto"></div>
+            <p className="mt-4">Memuat data petugas...</p>
+          </div>
+        ) : error ? (
+          <div className="text-center py-8 text-red-500">{error}</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="text-left text-sm text-gray-500 border-b">
+                  <th className="pb-3 pl-4">ID</th>
+                  <th className="pb-3">Nama</th>
+                  <th className="pb-3">Jabatan</th>
+                  <th className="pb-3">Email</th>
+                  <th className="pb-3">Telepon</th>
+                  <th className="pb-3">Tanggal Bergabung</th>
+                  <th className="pb-3">Status</th>
+                  <th className="pb-3 text-right">Aksi</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {filteredStaff.length === 0 ? (
+                  <tr>
+                    <td colSpan="8" className="py-4 text-center text-gray-500">
+                      Tidak ada data petugas yang ditemukan
+                    </td>
+                  </tr>
+                ) : (
+                  filteredStaff.map((s) => (
+                    <tr key={s.id_petugas} className="border-b hover:bg-gray-50">
+                      <td className="py-3 pl-4">{formatIdDisplay(s.id_petugas)}</td>
+                      <td className="py-3">{s.nama_petugas}</td>
+                      <td className="py-3">{s.jabatan}</td>
+                      <td className="py-3">{s.email}</td>
+                      <td className="py-3">{s.telepon}</td>
+                      <td className="py-3">{s.tanggalbergabung}</td>
+                      <td className="py-3">{getStatusBadge(s.status)}</td>
+                      <td className="py-3 text-right">
+                        <button
+                          className="text-green-600 hover:text-green-800 mr-3"
+                          onClick={() => openPasswordModal(s)}
+                          title="Reset Password"
+                        >
+                          <KeyIcon className="h-5 w-5" />
+                        </button>
+                        <button
+                          className="text-blue-600 hover:text-blue-800 mr-3"
+                          onClick={() => openModal(s)}
+                        >
+                          <PencilIcon className="h-5 w-5" />
+                        </button>
+                        <button
+                          className="text-red-600 hover:text-red-800"
+                          onClick={() => handleDelete(s.id_petugas)}
+                        >
+                          <TrashIcon className="h-5 w-5" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* Add/Edit Staff Modal */}
@@ -305,8 +375,8 @@ const StaffManagement = () => {
                   </label>
                   <input
                     type="text"
-                    name="id"
-                    value={currentStaff.id}
+                    name="id_petugas"
+                    value={isEditing ? formatIdDisplay(currentStaff.id_petugas) : formatIdDisplay(currentStaff.id_petugas)}
                     className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-100"
                     disabled
                   />
@@ -318,22 +388,8 @@ const StaffManagement = () => {
                   </label>
                   <input
                     type="text"
-                    name="name"
-                    value={currentStaff.name}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-gray-700 text-sm font-bold mb-2">
-                    NIK
-                  </label>
-                  <input
-                    type="text"
-                    name="nik"
-                    value={currentStaff.nik}
+                    name="nama_petugas"
+                    value={currentStaff.nama_petugas}
                     onChange={handleInputChange}
                     className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     required
@@ -345,8 +401,8 @@ const StaffManagement = () => {
                     Jabatan
                   </label>
                   <select
-                    name="role"
-                    value={currentStaff.role}
+                    name="jabatan"
+                    value={currentStaff.jabatan}
                     onChange={handleInputChange}
                     className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     required
@@ -379,24 +435,10 @@ const StaffManagement = () => {
                   </label>
                   <input
                     type="text"
-                    name="phone"
-                    value={currentStaff.phone}
+                    name="telepon"
+                    value={currentStaff.telepon}
                     onChange={handleInputChange}
                     className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    required
-                  />
-                </div>
-
-                <div className="md:col-span-2">
-                  <label className="block text-gray-700 text-sm font-bold mb-2">
-                    Alamat
-                  </label>
-                  <textarea
-                    name="address"
-                    value={currentStaff.address}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    rows="2"
                     required
                   />
                 </div>
@@ -407,8 +449,8 @@ const StaffManagement = () => {
                   </label>
                   <input
                     type="date"
-                    name="joinDate"
-                    value={currentStaff.joinDate}
+                    name="tanggalbergabung"
+                    value={currentStaff.tanggalbergabung}
                     onChange={handleInputChange}
                     className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     required
@@ -460,7 +502,7 @@ const StaffManagement = () => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-md">
             <h3 className="text-xl font-bold mb-4">
-              Reset Password - {currentStaff.name}
+              Reset Password - {currentStaff.nama_petugas}
             </h3>
 
             <form onSubmit={handlePasswordSubmit}>

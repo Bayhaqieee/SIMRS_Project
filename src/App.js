@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   BrowserRouter as Router,
   Routes,
@@ -30,10 +30,7 @@ function AppLayout({ isAuthenticated, userRole, handleLogout, handleLogin }) {
     <div className="app">
       {isAuthenticated && <Sidebar userRole={userRole} onLogout={handleLogout} />}
       
-      <div
-        className="content"
-        style={{ marginLeft: isAuthenticated ? "16rem" : "0" }}
-      >
+      <div className="content" style={{ marginLeft: isAuthenticated ? "16rem" : "0" }}>
         {isAuthenticated && <Header userRole={userRole} onLogout={handleLogout} />}
         <div className="main-content">
           <Routes>
@@ -139,9 +136,7 @@ function AppLayout({ isAuthenticated, userRole, handleLogout, handleLogin }) {
             />
             <Route
               path="*"
-              element={
-                <Navigate to={isAuthenticated ? "/dashboard" : "/login"} />
-              }
+              element={<Navigate to={isAuthenticated ? "/dashboard" : "/login"} />}
             />
           </Routes>
         </div>

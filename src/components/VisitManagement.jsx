@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   PlusIcon,
   PencilIcon,
@@ -6,78 +6,19 @@ import {
   SearchIcon,
   EyeIcon,
 } from "lucide-react";
+import supabase from "../supabaseClient";
 
 const VisitManagement = () => {
-  const [visits, setVisits] = useState([
-    {
-      id: "VST001",
-      patientName: "Agus Sutanto",
-      patientId: "P001",
-      doctorName: "Dr. Bambang Wijaya",
-      doctorId: "D001",
-      visitDate: "2025-05-04",
-      visitTime: "09:30",
-      complaint: "Demam, sakit kepala",
-      diagnosis: "Influenza",
-      treatment: "Paracetamol 3x1, Istirahat cukup",
-      notes: "Pasien alergi terhadap penisilin",
-      status: "Selesai",
-    },
-    {
-      id: "VST002",
-      patientName: "Dewi Anggraini",
-      patientId: "P002",
-      doctorName: "Dr. Sri Mulyani",
-      doctorId: "D002",
-      visitDate: "2025-05-04",
-      visitTime: "10:15",
-      complaint: "Nyeri perut",
-      diagnosis: "Gastritis",
-      treatment: "Antasida 3x1, Diet lunak",
-      notes: "",
-      status: "Selesai",
-    },
-    {
-      id: "VST003",
-      patientName: "Budi Hartono",
-      patientId: "P003",
-      doctorName: "Dr. Joko Susilo",
-      doctorId: "D003",
-      visitDate: "2025-05-04",
-      visitTime: "13:00",
-      complaint: "Luka pada kaki",
-      diagnosis: "Luka sayat",
-      treatment: "Perawatan luka, Antibiotik",
-      notes: "Perlu kontrol dalam 3 hari",
-      status: "Dalam Proses",
-    },
-    {
-      id: "VST004",
-      patientName: "Rina Wati",
-      patientId: "P004",
-      doctorName: "Dr. Bambang Wijaya",
-      doctorId: "D001",
-      visitDate: "2025-05-04",
-      visitTime: "14:30",
-      complaint: "Batuk berdahak",
-      diagnosis: "Belum diperiksa",
-      treatment: "",
-      notes: "",
-      status: "Menunggu",
-    },
-  ]);
-
+  const [visits, setVisits] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [currentVisit, setCurrentVisit] = useState({
-    id: "",
-    patientName: "",
-    patientId: "",
-    doctorName: "",
-    doctorId: "",
-    visitDate: "",
-    visitTime: "",
-    complaint: "",
+    id_kunjungan: "",
+    pasien: "",
+    dokter: "",
+    tanggal: "",
+    waktu: "",
+    keluhan: "",
     diagnosis: "",
     treatment: "",
     notes: "",
@@ -85,28 +26,34 @@ const VisitManagement = () => {
   });
   const [isEditing, setIsEditing] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Sample doctors list - would come from API in real app
-  const doctors = [
-    { id: "D001", name: "Dr. Bambang Wijaya" },
-    { id: "D002", name: "Dr. Sri Mulyani" },
-    { id: "D003", name: "Dr. Joko Susilo" },
-    { id: "D004", name: "Dr. Anita Permata" },
-  ];
+  // Fetch visits from Supabase
+  useEffect(() => {
+    fetchVisits();
+  }, []);
 
-  // Sample patients list - would come from API in real app
-  const patients = [
-    { id: "P001", name: "Agus Sutanto" },
-    { id: "P002", name: "Dewi Anggraini" },
-    { id: "P003", name: "Budi Hartono" },
-    { id: "P004", name: "Rina Wati" },
-    { id: "P005", name: "Siti Aminah" },
-  ];
+  const fetchVisits = async () => {
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from("kunjungan")
+        .select("*")
+        .order("tanggal", { ascending: false });
 
-  const generateId = () => {
-    const lastId = visits.length > 0 ? visits[visits.length - 1].id : "VST000";
-    const numericPart = parseInt(lastId.substring(3));
-    return `VST${String(numericPart + 1).padStart(3, "0")}`;
+      if (error) {
+        throw error;
+      }
+
+      if (data) {
+        setVisits(data);
+      }
+    } catch (error) {
+      console.error("Error fetching visits:", error.message);
+      alert("Error fetching visits: " + error.message);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const openModal = (visit = null) => {
@@ -117,14 +64,12 @@ const VisitManagement = () => {
       const today = new Date().toISOString().split("T")[0];
       const now = new Date().toTimeString().substring(0, 5);
       setCurrentVisit({
-        id: generateId(),
-        patientName: "",
-        patientId: "",
-        doctorName: "",
-        doctorId: "",
-        visitDate: today,
-        visitTime: now,
-        complaint: "",
+        id_kunjungan: "",  // Supabase will auto-generate this as int8
+        pasien: "",
+        dokter: "",
+        tanggal: today,
+        waktu: now,
+        keluhan: "",
         diagnosis: "",
         treatment: "",
         notes: "",
@@ -150,53 +95,86 @@ const VisitManagement = () => {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-
-    if (name === "patientId") {
-      const selectedPatient = patients.find((patient) => patient.id === value);
-      setCurrentVisit({
-        ...currentVisit,
-        patientId: value,
-        patientName: selectedPatient ? selectedPatient.name : "",
-      });
-    } else if (name === "doctorId") {
-      const selectedDoctor = doctors.find((doctor) => doctor.id === value);
-      setCurrentVisit({
-        ...currentVisit,
-        doctorId: value,
-        doctorName: selectedDoctor ? selectedDoctor.name : "",
-      });
-    } else {
-      setCurrentVisit({ ...currentVisit, [name]: value });
-    }
+    setCurrentVisit({ ...currentVisit, [name]: value });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (isEditing) {
-      const updatedVisits = visits.map((visit) =>
-        visit.id === currentVisit.id ? currentVisit : visit
-      );
-      setVisits(updatedVisits);
-    } else {
-      setVisits([...visits, currentVisit]);
+    try {
+      if (isEditing) {
+        // Update existing visit
+        const { error } = await supabase
+          .from("kunjungan")
+          .update({
+            pasien: currentVisit.pasien,
+            dokter: currentVisit.dokter,
+            tanggal: currentVisit.tanggal,
+            waktu: currentVisit.waktu,
+            keluhan: currentVisit.keluhan,
+            diagnosis: currentVisit.diagnosis,
+            treatment: currentVisit.treatment,
+            notes: currentVisit.notes,
+            status: currentVisit.status
+          })
+          .eq("id_kunjungan", currentVisit.id_kunjungan);
+
+        if (error) throw error;
+        alert("Kunjungan berhasil diperbarui!");
+      } else {
+        // Create new visit
+        const { error } = await supabase.from("kunjungan").insert([
+          {
+            pasien: currentVisit.pasien,
+            dokter: currentVisit.dokter,
+            tanggal: currentVisit.tanggal,
+            waktu: currentVisit.waktu,
+            keluhan: currentVisit.keluhan,
+            diagnosis: currentVisit.diagnosis || "",
+            treatment: currentVisit.treatment || "",
+            notes: currentVisit.notes || "",
+            status: currentVisit.status
+          },
+        ]);
+
+        if (error) throw error;
+        alert("Kunjungan baru berhasil ditambahkan!");
+      }
+
+      // Refresh the visits list
+      fetchVisits();
+      closeModal();
+    } catch (error) {
+      console.error("Error saving visit:", error.message);
+      alert("Error saving visit: " + error.message);
     }
-    closeModal();
   };
 
-  const handleDelete = (id) => {
-    if (
-      window.confirm("Apakah anda yakin ingin menghapus data kunjungan ini?")
-    ) {
-      setVisits(visits.filter((visit) => visit.id !== id));
+  const handleDelete = async (id) => {
+    if (window.confirm("Apakah anda yakin ingin menghapus data kunjungan ini?")) {
+      try {
+        const { error } = await supabase
+          .from("kunjungan")
+          .delete()
+          .eq("id_kunjungan", id);
+
+        if (error) throw error;
+        
+        // Refresh the visits list
+        fetchVisits();
+        alert("Kunjungan berhasil dihapus!");
+      } catch (error) {
+        console.error("Error deleting visit:", error.message);
+        alert("Error deleting visit: " + error.message);
+      }
     }
   };
 
   const filteredVisits = visits.filter(
     (visit) =>
-      visit.patientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      visit.doctorName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      visit.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      visit.status.toLowerCase().includes(searchTerm.toLowerCase())
+      visit.pasien?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      visit.dokter?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      visit.id_kunjungan?.toString().includes(searchTerm.toLowerCase()) ||
+      visit.status?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const getStatusBadge = (status) => {
@@ -250,59 +228,73 @@ const VisitManagement = () => {
           </button>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="text-left text-sm text-gray-500 border-b">
-                <th className="pb-3 pl-4">ID</th>
-                <th className="pb-3">Pasien</th>
-                <th className="pb-3">Dokter</th>
-                <th className="pb-3">Tanggal</th>
-                <th className="pb-3">Waktu</th>
-                <th className="pb-3">Keluhan</th>
-                <th className="pb-3">Status</th>
-                <th className="pb-3 text-right">Aksi</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredVisits.map((visit) => (
-                <tr key={visit.id} className="border-b hover:bg-gray-50">
-                  <td className="py-3 pl-4">{visit.id}</td>
-                  <td className="py-3">{visit.patientName}</td>
-                  <td className="py-3">{visit.doctorName}</td>
-                  <td className="py-3">{visit.visitDate}</td>
-                  <td className="py-3">{visit.visitTime}</td>
-                  <td className="py-3">
-                    {visit.complaint.length > 20
-                      ? `${visit.complaint.substring(0, 20)}...`
-                      : visit.complaint}
-                  </td>
-                  <td className="py-3">{getStatusBadge(visit.status)}</td>
-                  <td className="py-3 text-right">
-                    <button
-                      className="text-green-600 hover:text-green-800 mr-3"
-                      onClick={() => openDetailModal(visit)}
-                    >
-                      <EyeIcon className="h-5 w-5" />
-                    </button>
-                    <button
-                      className="text-blue-600 hover:text-blue-800 mr-3"
-                      onClick={() => openModal(visit)}
-                    >
-                      <PencilIcon className="h-5 w-5" />
-                    </button>
-                    <button
-                      className="text-red-600 hover:text-red-800"
-                      onClick={() => handleDelete(visit.id)}
-                    >
-                      <TrashIcon className="h-5 w-5" />
-                    </button>
-                  </td>
+        {isLoading ? (
+          <div className="flex justify-center py-10">
+            <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-600"></div>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="text-left text-sm text-gray-500 border-b">
+                  <th className="pb-3 pl-4">ID</th>
+                  <th className="pb-3">Pasien</th>
+                  <th className="pb-3">Dokter</th>
+                  <th className="pb-3">Tanggal</th>
+                  <th className="pb-3">Waktu</th>
+                  <th className="pb-3">Keluhan</th>
+                  <th className="pb-3">Status</th>
+                  <th className="pb-3 text-right">Aksi</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {filteredVisits.length > 0 ? (
+                  filteredVisits.map((visit) => (
+                    <tr key={visit.id_kunjungan} className="border-b hover:bg-gray-50">
+                      <td className="py-3 pl-4">{visit.id_kunjungan}</td>
+                      <td className="py-3">{visit.pasien}</td>
+                      <td className="py-3">{visit.dokter}</td>
+                      <td className="py-3">{visit.tanggal}</td>
+                      <td className="py-3">{visit.waktu}</td>
+                      <td className="py-3">
+                        {visit.keluhan && visit.keluhan.length > 20
+                          ? `${visit.keluhan.substring(0, 20)}...`
+                          : visit.keluhan}
+                      </td>
+                      <td className="py-3">{getStatusBadge(visit.status)}</td>
+                      <td className="py-3 text-right">
+                        <button
+                          className="text-green-600 hover:text-green-800 mr-3"
+                          onClick={() => openDetailModal(visit)}
+                        >
+                          <EyeIcon className="h-5 w-5" />
+                        </button>
+                        <button
+                          className="text-blue-600 hover:text-blue-800 mr-3"
+                          onClick={() => openModal(visit)}
+                        >
+                          <PencilIcon className="h-5 w-5" />
+                        </button>
+                        <button
+                          className="text-red-600 hover:text-red-800"
+                          onClick={() => handleDelete(visit.id_kunjungan)}
+                        >
+                          <TrashIcon className="h-5 w-5" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan="8" className="py-4 text-center text-gray-500">
+                      Tidak ada data kunjungan yang ditemukan
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* Add/Edit Visit Modal */}
@@ -315,57 +307,49 @@ const VisitManagement = () => {
 
             <form onSubmit={handleSubmit}>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-gray-700 text-sm font-bold mb-2">
-                    ID Kunjungan
-                  </label>
-                  <input
-                    type="text"
-                    name="id"
-                    value={currentVisit.id}
-                    className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-100"
-                    disabled
-                  />
-                </div>
+                {isEditing && (
+                  <div>
+                    <label className="block text-gray-700 text-sm font-bold mb-2">
+                      ID Kunjungan
+                    </label>
+                    <input
+                      type="text"
+                      name="id_kunjungan"
+                      value={currentVisit.id_kunjungan}
+                      className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-100"
+                      disabled
+                    />
+                  </div>
+                )}
 
-                <div>
+                <div className={isEditing ? "" : "md:col-span-2"}>
                   <label className="block text-gray-700 text-sm font-bold mb-2">
                     Pasien
                   </label>
-                  <select
-                    name="patientId"
-                    value={currentVisit.patientId}
+                  <input
+                    type="text"
+                    name="pasien"
+                    value={currentVisit.pasien}
                     onChange={handleInputChange}
                     className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Masukkan nama pasien"
                     required
-                  >
-                    <option value="">Pilih Pasien</option>
-                    {patients.map((patient) => (
-                      <option key={patient.id} value={patient.id}>
-                        {patient.name}
-                      </option>
-                    ))}
-                  </select>
+                  />
                 </div>
 
                 <div>
                   <label className="block text-gray-700 text-sm font-bold mb-2">
                     Dokter
                   </label>
-                  <select
-                    name="doctorId"
-                    value={currentVisit.doctorId}
+                  <input
+                    type="text"
+                    name="dokter"
+                    value={currentVisit.dokter}
                     onChange={handleInputChange}
                     className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Masukkan nama dokter"
                     required
-                  >
-                    <option value="">Pilih Dokter</option>
-                    {doctors.map((doctor) => (
-                      <option key={doctor.id} value={doctor.id}>
-                        {doctor.name}
-                      </option>
-                    ))}
-                  </select>
+                  />
                 </div>
 
                 <div>
@@ -391,8 +375,8 @@ const VisitManagement = () => {
                   </label>
                   <input
                     type="date"
-                    name="visitDate"
-                    value={currentVisit.visitDate}
+                    name="tanggal"
+                    value={currentVisit.tanggal}
                     onChange={handleInputChange}
                     className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     required
@@ -405,13 +389,57 @@ const VisitManagement = () => {
                   </label>
                   <input
                     type="time"
-                    name="visitTime"
-                    value={currentVisit.visitTime}
+                    name="waktu"
+                    value={currentVisit.waktu}
                     onChange={handleInputChange}
                     className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     required
                   />
                 </div>
+
+                <div className="md:col-span-2">
+                  <label className="block text-gray-700 text-sm font-bold mb-2">
+                    Keluhan
+                  </label>
+                  <textarea
+                    name="keluhan"
+                    value={currentVisit.keluhan}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    rows="2"
+                    required
+                  />
+                </div>
+
+                {currentVisit.status === "Dalam Proses" || currentVisit.status === "Selesai" ? (
+                  <>
+                    <div className="md:col-span-2">
+                      <label className="block text-gray-700 text-sm font-bold mb-2">
+                        Diagnosis
+                      </label>
+                      <textarea
+                        name="diagnosis"
+                        value={currentVisit.diagnosis}
+                        onChange={handleInputChange}
+                        className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        rows="2"
+                      />
+                    </div>
+
+                    <div className="md:col-span-2">
+                      <label className="block text-gray-700 text-sm font-bold mb-2">
+                        Tindakan/Pengobatan
+                      </label>
+                      <textarea
+                        name="treatment"
+                        value={currentVisit.treatment}
+                        onChange={handleInputChange}
+                        className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        rows="2"
+                      />
+                    </div>
+                  </>
+                ) : null}
 
                 <div className="md:col-span-2">
                   <label className="block text-gray-700 text-sm font-bold mb-2">
@@ -478,7 +506,7 @@ const VisitManagement = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm text-gray-500">ID Kunjungan</p>
-                  <p className="font-semibold">{currentVisit.id}</p>
+                  <p className="font-semibold">{currentVisit.id_kunjungan}</p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-500">Status</p>
@@ -493,11 +521,7 @@ const VisitManagement = () => {
                 <div className="space-y-2">
                   <div>
                     <p className="text-sm text-gray-500">Nama Pasien</p>
-                    <p>{currentVisit.patientName}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500">ID Pasien</p>
-                    <p>{currentVisit.patientId}</p>
+                    <p>{currentVisit.pasien}</p>
                   </div>
                 </div>
               </div>
@@ -507,11 +531,7 @@ const VisitManagement = () => {
                 <div className="space-y-2">
                   <div>
                     <p className="text-sm text-gray-500">Nama Dokter</p>
-                    <p>{currentVisit.doctorName}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500">ID Dokter</p>
-                    <p>{currentVisit.doctorId}</p>
+                    <p>{currentVisit.dokter}</p>
                   </div>
                 </div>
               </div>
@@ -523,11 +543,11 @@ const VisitManagement = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <p className="text-sm text-gray-500">Tanggal Kunjungan</p>
-                    <p>{currentVisit.visitDate}</p>
+                    <p>{currentVisit.tanggal}</p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-500">Waktu Kunjungan</p>
-                    <p>{currentVisit.visitTime}</p>
+                    <p>{currentVisit.waktu}</p>
                   </div>
                 </div>
               </div>
@@ -535,7 +555,7 @@ const VisitManagement = () => {
               <div>
                 <p className="text-sm text-gray-500">Keluhan</p>
                 <p className="bg-gray-50 p-3 rounded">
-                  {currentVisit.complaint || "-"}
+                  {currentVisit.keluhan || "-"}
                 </p>
               </div>
 
